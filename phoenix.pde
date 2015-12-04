@@ -14,18 +14,21 @@ Player player;
 float base_speed = 3;
 ArrayList entities = new ArrayList();
 
-HashMap keys = new HashMap();
+boolean key_up = false;
+boolean key_down = false;
+boolean key_left = false;
+boolean key_right = false;
+boolean key_space = false;
 
 /* Setting up canvas and populating boids. */
 void setup() {
     load_story();
     //load_levels();
     //load_images();
-    prepare_keys();
 
     PVector speed = new PVector(0, 0);
     PVector pos = new PVector(w/3, h/2);
-    player = new Player(0, pos, speed);
+    player = new Player(pos, speed);
     entities.add(player);
 
     smooth();
@@ -34,47 +37,45 @@ void setup() {
 }
 
 /* Tracking which keys have been pressed. */
-void prepare_keys() {
-    keys.put("up", false);
-    keys.put("down", false);
-    keys.put("left", false);
-    keys.put("right", false);
-}
-
 void keyPressed() {
     if (key == CODED) {
-        if (keyCode == UP) keys.put("up", true);
-        if (keyCode == DOWN) keys.put("down", true);
-        if (keyCode == LEFT) keys.put("left", true);
-        if (keyCode == RIGHT) keys.put("right", true);
+        if (keyCode == UP) key_up = true;
+        if (keyCode == DOWN) key_down = true;
+        if (keyCode == LEFT) key_left = true;
+        if (keyCode == RIGHT) key_right = true;
     }
+    else if (keyCode == ' ') key_space = true;
 }
-
 void keyReleased() {
     if (key == CODED) {
-        if (keyCode == UP) keys.put("up", false);
-        if (keyCode == DOWN) keys.put("down", false);
-        if (keyCode == LEFT) keys.put("left", false);
-        if (keyCode == RIGHT) keys.put("right", false);
+        if (keyCode == UP) key_up = false;
+        if (keyCode == DOWN) key_down = false;
+        if (keyCode == LEFT) key_left = false;
+        if (keyCode == RIGHT) key_right = false;
+
     }
+    else if (keyCode == ' ') key_space = false;
 }
 
 void check_keys() {
-    /* UP and DOWN */
-    if (keys.get("up")) player.speed.y = -base_speed;
-    else if (keys.get("down")) player.speed.y = base_speed;
+    /* directions */
+    if (key_up) player.speed.y = -base_speed;
+    else if (key_down) player.speed.y = base_speed;
     else player.speed.y = 0;
-    /* LEFT and RIGHT */
-    if (keys.get("left")) player.speed.x = -base_speed;
-    else if (keys.get("right")) player.speed.x = base_speed;
+
+    if (key_left) player.speed.x = -base_speed;
+    else if (key_right) player.speed.x = base_speed;
     else player.speed.x = 0;
+
+    /* fire shot */
+    if (key_space) player.fire_shot();
 }
 
 /* Update positions, collisions, etc. */
 void update() {
     // update positions
-    player.move();
-    // for entity in entities...
+    for (int i = 0; i < entities.size(); i++)
+        entities.get(i).move();
 }
 
 /* Main loop. */
@@ -96,7 +97,7 @@ void draw() {
 
         // draw entities
         for (int i = 0; i < entities.size(); i++) {
-            Player e = entities.get(i);
+            Entity e = entities.get(i);
             x = e.pos.x;
             y = e.pos.y;
 
@@ -106,7 +107,6 @@ void draw() {
             image(e.img, -e.img.width/2, -e.img.height/2);
             popMatrix();
         }
-        // game
     }
 }
 
@@ -123,17 +123,20 @@ void load_story() {
 
 
 /* Classes */
-class Player {
+class Entity {
     int id;
     PImage img;
     PVector pos;
     PVector speed;
 
-    Player(int _id, PVector _pos, PVector _speed) {
-        id = _id;
-        img = loadImage("img/player.png");
+    Entity(PVector _pos, PVector _speed) {
+        id = entities.size();
         pos = _pos.get(); // copy
         speed = _speed.get(); // copy
+    }
+
+    void set_image(String name) {
+        img = loadImage("img/" +name + ".png");
     }
 
     /* Moving */
@@ -141,6 +144,31 @@ class Player {
         pos.x = pos.x + speed.x;
         pos.y = pos.y + speed.y;
 
-        // TODO check if out of bounds
+        if (pos.x < 0) pos.x = 0;
+        else if (pos.x > w) pos.x = w;
+
+        if (pos.y < 0) pos.y = 0;
+        else if (pos.y > h) pos.y = h;
+    }
+}
+
+class Player extends Entity {
+    Player(PVector _pos, PVector _speed) {
+        super(_pos, _speed);
+        super.set_image("player");
+    }
+    void fire_shot() {
+        // TODO check when last shot was fired
+        PVector speed = new PVector(base_speed + 1, 0);
+        Shot s = new Shot(pos, speed);
+        if (debug) println('Firing shot ' + s.id + '...');
+        entities.add(s);
+    }
+}
+
+class Shot extends Entity {
+    Shot(PVector _pos, PVector _speed) {
+        super(_pos, _speed);
+        super.set_image("bullet0");
     }
 }
