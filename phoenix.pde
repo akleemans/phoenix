@@ -13,6 +13,7 @@ int level_index = 0;
 Player player;
 float base_speed = 3;
 ArrayList entities = new ArrayList();
+int entity_index = 0;
 
 boolean key_up = false;
 boolean key_down = false;
@@ -20,7 +21,7 @@ boolean key_left = false;
 boolean key_right = false;
 boolean key_space = false;
 
-/* Setting up canvas and populating boids. */
+/* Setting up canvas. */
 void setup() {
     load_story();
     //load_levels();
@@ -44,17 +45,19 @@ void keyPressed() {
         if (keyCode == LEFT) key_left = true;
         if (keyCode == RIGHT) key_right = true;
     }
-    else if (keyCode == ' ') key_space = true;
+    // only allow shooting if some time passed
+    else if (keyCode == ' ') {
+        key_space = true;
+    }
 }
+
 void keyReleased() {
     if (key == CODED) {
         if (keyCode == UP) key_up = false;
         if (keyCode == DOWN) key_down = false;
         if (keyCode == LEFT) key_left = false;
         if (keyCode == RIGHT) key_right = false;
-
     }
-    else if (keyCode == ' ') key_space = false;
 }
 
 void check_keys() {
@@ -74,11 +77,22 @@ void check_keys() {
 /* Update positions, collisions, etc. */
 void update() {
     // update positions
-    for (int i = 0; i < entities.size(); i++)
-        entities.get(i).move();
+    for (int i = entities.size()-1; i >= 0; i--) {
+        Entity e = entities.get(i);
+        e.move(); // move every entity
+
+        // TODO collision detection
+
+        // remove unused bullets
+        if (e instanceof Shot && (e.pos.x == w || e.pos.y == h)) {
+            if (debug) println('Shot ' + e.id + ' fell out of canvas.');
+            entities.remove(i);
+            continue;
+        }
+    }
 }
 
-/* Main loop. */
+/* Main loop */
 void draw() {
     /* drawing */
     background(255);
@@ -110,7 +124,7 @@ void draw() {
     }
 }
 
-/* Helper functions. */
+/* Helper functions */
 void load_story() {
     String[] lines = loadStrings("story.dat");
     story = new ArrayList();
@@ -130,7 +144,7 @@ class Entity {
     PVector speed;
 
     Entity(PVector _pos, PVector _speed) {
-        id = entities.size();
+        id = entity_index++;
         pos = _pos.get(); // copy
         speed = _speed.get(); // copy
     }
@@ -163,6 +177,7 @@ class Player extends Entity {
         Shot s = new Shot(pos, speed);
         if (debug) println('Firing shot ' + s.id + '...');
         entities.add(s);
+        key_space = false;
     }
 }
 
