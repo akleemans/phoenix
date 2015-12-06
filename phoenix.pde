@@ -6,9 +6,9 @@ String state = "story"; // menu, story, game, info
 
 // data
 ArrayList story;
-ArrayList levels;
+ArrayList stages;
 int story_index = 0;
-int level_index = 0;
+int stage_index = 0;
 
 Player player;
 float base_speed = 3;
@@ -24,8 +24,7 @@ boolean key_space = false;
 /* Setting up canvas. */
 void setup() {
     load_story();
-    //load_levels();
-    //load_images();
+    //load_stages();
 
     PVector speed = new PVector(0, 0);
     PVector pos = new PVector(w/3, h/2);
@@ -106,6 +105,11 @@ void draw() {
         story_index += 1;
         if (story_index == story.size()-1) state = "game";
     } else if (state.equals("game")) {
+        if (stage_index == 0) {
+            populate_bg();
+            stage_index += 1;
+        }
+
         check_keys();
         update();
 
@@ -135,6 +139,38 @@ void load_story() {
     if (debug) println('Loaded ' + story.size() + ' story entries.');
 }
 
+/* populate */
+void populate_bg() {
+    // sparks
+    for (int i = 0; i < 40; i++) {
+        PVector speed = new PVector(-1, 0);
+        PVector pos = new PVector(int(random(w)), int(random(h)));
+        String name ="spark" + str(int(random(3)));
+        println(name);
+        Spark s = new Spark(pos, speed, name);
+        entities.add(s);
+    }
+
+    // border
+
+
+    /*
+    xpos = 0
+    ypos = 0
+    pos1 = [0, 0]
+    pos2 = [0, 30]
+    for i in range(0, 300):
+        pos3 = [20 + random.randint(0, 30), 20 + random.randint(0, 30)]
+        pos4 = [pos3[0], 0]
+        # add sprite
+        border = sprites.Border(pos1, pos2, pos3, pos4, xpos, ypos)
+        xpos += pos4[0]
+
+        pos1 = [0, 0]
+        pos2 = [0, pos3[1]]
+        border_sprites.add(border)
+    */
+}
 
 /* Classes */
 class Entity {
@@ -150,7 +186,7 @@ class Entity {
     }
 
     void set_image(String name) {
-        img = loadImage("img/" +name + ".png");
+        img = loadImage("img/" + name + ".png");
     }
 
     /* Moving */
@@ -185,5 +221,25 @@ class Shot extends Entity {
     Shot(PVector _pos, PVector _speed) {
         super(_pos, _speed);
         super.set_image("bullet0");
+    }
+}
+
+class Spark extends Entity {
+    Spark(PVector _pos, PVector _speed, String type) {
+        super(_pos, _speed);
+        super.set_image(type);
+    }
+
+    void move() {
+        super.move();
+        if (pos.x == 0) pos.x = w;
+    }
+
+}
+
+class Border extends Entity {
+    Border(PVector _pos, PVector _speed) {
+        super(_pos, _speed);
+        // TODO save vertices
     }
 }
