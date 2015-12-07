@@ -1,7 +1,7 @@
 // general stuff
 boolean debug = true;
-int h = 400;
-int w = 600;
+int h = 300;
+int w = 500;
 String state = "story"; // menu, story, game, info
 
 // data
@@ -14,6 +14,9 @@ Player player;
 float base_speed = 3;
 ArrayList entities = new ArrayList();
 int entity_index = 0;
+ArrayList bg_entities = new ArrayList();     // sparks, borders, speech bubbles, explosions
+ArrayList collectables = new ArrayList();   // bullets, powerups
+ArrayList actors = new ArrayList();         // player, enemies
 
 boolean key_up = false;
 boolean key_down = false;
@@ -25,11 +28,6 @@ boolean key_space = false;
 void setup() {
     load_story();
     //load_stages();
-
-    PVector speed = new PVector(0, 0);
-    PVector pos = new PVector(w/3, h/2);
-    player = new Player(pos, speed);
-    entities.add(player);
 
     smooth();
     size(w, h);
@@ -69,24 +67,32 @@ void check_keys() {
     else if (key_right) player.speed.x = base_speed;
     else player.speed.x = 0;
 
-    /* fire shot */
-    if (key_space) player.fire_shot();
+    /* fire bullet */
+    if (key_space) player.fire_bullet();
 }
 
 /* Update positions, collisions, etc. */
 void update() {
     // update positions
-    for (int i = entities.size()-1; i >= 0; i--) {
-        Entity e = entities.get(i);
-        e.move(); // move every entity
+    for (int i = 0; i < entities.size(); i++) {
+        // background, actors
+        ArrayList list = entities.get(i);
+        for (int j = list.size()-1; j >= 0; j--) {
+            Entity e = list.get(j);
+            e.move(); // move every entity
 
-        // TODO collision detection
+            // TODO collision detection
 
-        // remove unused bullets
-        if (e instanceof Shot && (e.pos.x == w || e.pos.y == h)) {
-            if (debug) println('Shot ' + e.id + ' fell out of canvas.');
-            entities.remove(i);
-            continue;
+            // remove unused bullets & backgrounds
+            if (e instanceof Bullet && (e.pos.x == w || e.pos.y == h)) {
+                if (debug) println('Bullet ' + e.id + ' fell out of canvas.');
+                list.remove(j);
+                continue;
+            }
+            else if (e instanceof Border && e.pos.x < -50) {
+                if (debug) println('Border ' + e.id + ' fell out of canvas.');
+                list.remove(j);
+            }
         }
     }
 }
@@ -115,15 +121,32 @@ void draw() {
 
         // draw entities
         for (int i = 0; i < entities.size(); i++) {
-            Entity e = entities.get(i);
-            x = e.pos.x;
-            y = e.pos.y;
-
-            pushMatrix();
-            translate(x, y);
-            ////rotate(b.rot);
-            image(e.img, -e.img.width/2, -e.img.height/2);
-            popMatrix();
+            ArrayList list = entities.get(i);
+            for (int j = 0; j < list.size(); j++) {
+                Entity e = list.get(j);
+                if (e instanceof Border) {
+                    stroke(50);
+                    fill(50);
+                    beginShape();
+                    int x = e.pos.x;
+                    int y = e.pos.y;
+                    vertex(x+e.pos1.x, y+e.pos1.y);
+                    vertex(x+e.pos2.x, y+e.pos2.y);
+                    vertex(x+e.pos3.x, y+e.pos3.y);
+                    vertex(x+e.pos4.x, y+e.pos4.y);
+                    endShape();
+                    stroke(0);
+                    fill(255);
+                } else {
+                    x = e.pos.x;
+                    y = e.pos.y;
+                    pushMatrix();
+                    translate(x, y);
+                    ////rotate(b.rot);
+                    image(e.img, -e.img.width/2, -e.img.height/2);
+                    popMatrix();
+                }
+            }
         }
     }
 }
@@ -141,38 +164,65 @@ void load_story() {
 
 /* populate */
 void populate_bg() {
+    // build player
+    PVector speed = new PVector(0, 0);
+    PVector pos = new PVector(w/3, h/2);
+    player = new Player(pos, speed);
+
+    // build entity list
+    entities.add(bg_entities);
+    entities.add(collectables);
+    entities.add(actors);
+    actors.add(player);
+
     // sparks
     for (int i = 0; i < 40; i++) {
         PVector speed = new PVector(-1, 0);
         PVector pos = new PVector(int(random(w)), int(random(h)));
         String name ="spark" + str(int(random(3)));
-        println(name);
         Spark s = new Spark(pos, speed, name);
-        entities.add(s);
+        bg_entities.add(s);
     }
 
-    // border
+    // TODO repeat border generation if we run out of borders
+    // upper border
+    PVector pos = new PVector(0, 0);
+    PVector speed = new PVector(-2, 0);
+    PVector pos1 = new PVector(0, 0);
+    PVector pos2 = new PVector(0, 30);
+    for (int i = 0; i < 200; i++) {
+        PVector pos3 = new PVector(20 + random(30), 20 + random(30));
+        PVector pos4 = new PVector(pos3.x, 0);
+        Border border = new Border(pos, speed, pos1, pos2, pos3, pos4);
+        bg_entities.add(border);
+        pos.x += pos4.x
+        pos1 = new PVector(0, 0);
+        pos2 = new PVector(0, pos3.y);
+    }
 
-
-    /*
-    xpos = 0
-    ypos = 0
-    pos1 = [0, 0]
-    pos2 = [0, 30]
-    for i in range(0, 300):
-        pos3 = [20 + random.randint(0, 30), 20 + random.randint(0, 30)]
-        pos4 = [pos3[0], 0]
-        # add sprite
-        border = sprites.Border(pos1, pos2, pos3, pos4, xpos, ypos)
-        xpos += pos4[0]
-
-        pos1 = [0, 0]
-        pos2 = [0, pos3[1]]
-        border_sprites.add(border)
-    */
+    // lower border
+    PVector pos = new PVector(0, h-50);
+    PVector speed = new PVector(-2, 0);
+    PVector pos1 = new PVector(0, h);
+    PVector pos2 = new PVector(0, 30);
+    for (int i = 0; i < 200; i++) {
+        PVector pos3 = new PVector(20 + random(30), 50 - (20 + random(30)));
+        PVector pos4 = new PVector(pos3.x, h);
+        Border border = new Border(pos, speed, pos1, pos2, pos3, pos4);
+        bg_entities.add(border);
+        pos.x += pos4.x
+        pos1 = new PVector(0, h);
+        pos2 = new PVector(0, pos3.y);
+    }
 }
 
-/* Classes */
+/*
+void populate_enemies() { }
+*/
+
+/* --------------- Class definitions --------------- */
+
+/* Main Entity */
 class Entity {
     int id;
     PImage img;
@@ -202,28 +252,30 @@ class Entity {
     }
 }
 
+/* Actor entities */
 class Player extends Entity {
     Player(PVector _pos, PVector _speed) {
         super(_pos, _speed);
         super.set_image("player");
     }
-    void fire_shot() {
-        // TODO check when last shot was fired
+    void fire_bullet() {
         PVector speed = new PVector(base_speed + 1, 0);
-        Shot s = new Shot(pos, speed);
-        if (debug) println('Firing shot ' + s.id + '...');
-        entities.add(s);
+        Bullet s = new Bullet(pos, speed);
+        if (debug) println('Firing bullet ' + s.id + '...');
+        collectables.add(s);
         key_space = false;
     }
 }
 
-class Shot extends Entity {
-    Shot(PVector _pos, PVector _speed) {
+/* Collectable entities */
+class Bullet extends Entity {
+    Bullet(PVector _pos, PVector _speed) {
         super(_pos, _speed);
         super.set_image("bullet0");
     }
 }
 
+/* Background entities */
 class Spark extends Entity {
     Spark(PVector _pos, PVector _speed, String type) {
         super(_pos, _speed);
@@ -238,8 +290,17 @@ class Spark extends Entity {
 }
 
 class Border extends Entity {
-    Border(PVector _pos, PVector _speed) {
+    PVector pos1, pos2, pos3, pos4;
+
+    Border(PVector _pos, PVector _speed, PVector _pos1, PVector _pos2, PVector _pos3, PVector _pos4) {
         super(_pos, _speed);
-        // TODO save vertices
+        pos1 = _pos1.get();
+        pos2 = _pos2.get();
+        pos3 = _pos3.get();
+        pos4 = _pos4.get();
+    }
+
+    void move() {
+        pos.x = pos.x + speed.x;
     }
 }
