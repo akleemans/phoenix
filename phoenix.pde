@@ -2,7 +2,7 @@
 boolean debug = true;
 int h = 300;
 int w = 500;
-String state = "story"; // menu, story, game, info
+String state = "game"; // menu, story, game, info
 
 // data
 ArrayList story;
@@ -23,6 +23,7 @@ boolean key_down = false;
 boolean key_left = false;
 boolean key_right = false;
 boolean key_space = false;
+boolean key_space_released = true;
 
 /* Setting up canvas. */
 void setup() {
@@ -36,25 +37,19 @@ void setup() {
 
 /* Tracking which keys have been pressed. */
 void keyPressed() {
-    if (key == CODED) {
-        if (keyCode == UP) key_up = true;
-        if (keyCode == DOWN) key_down = true;
-        if (keyCode == LEFT) key_left = true;
-        if (keyCode == RIGHT) key_right = true;
-    }
-    // only allow shooting if some time passed
-    else if (keyCode == ' ') {
-        key_space = true;
-    }
+    if (key == 'w') key_up = true;
+    else if (key == 's') key_down = true;
+    else if (key == 'a') key_left = true;
+    else if (key == 'd') key_right = true;
+    else if (key_space_released && (key == ' ' || keyCode == ENTER)) {key_space = true; key_space_released = false;}
 }
 
 void keyReleased() {
-    if (key == CODED) {
-        if (keyCode == UP) key_up = false;
-        if (keyCode == DOWN) key_down = false;
-        if (keyCode == LEFT) key_left = false;
-        if (keyCode == RIGHT) key_right = false;
-    }
+    if (key == 'w') key_up = false;
+    else if (key == 's') key_down = false;
+    else if (key == 'a') key_left = false;
+    else if (key == 'd') key_right = false;
+    else if (key == ' ' || keyCode == ENTER) {key_space = false; key_space_released = true;}
 }
 
 void check_keys() {
@@ -68,7 +63,10 @@ void check_keys() {
     else player.speed.x = 0;
 
     /* fire bullet */
-    if (key_space) player.fire_bullet();
+    if (key_space) {
+        player.fire_bullet();
+        key_space = false;
+    }
 }
 
 /* Update positions, collisions, etc. */
@@ -90,7 +88,7 @@ void update() {
                 continue;
             }
             else if (e instanceof Border && e.pos.x < -50) {
-                if (debug) println('Border ' + e.id + ' fell out of canvas.');
+                //if (debug) println('Border ' + e.id + ' fell out of canvas.');
                 list.remove(j);
             }
         }
@@ -263,7 +261,6 @@ class Player extends Entity {
         Bullet s = new Bullet(pos, speed);
         if (debug) println('Firing bullet ' + s.id + '...');
         collectables.add(s);
-        key_space = false;
     }
 }
 
@@ -286,7 +283,6 @@ class Spark extends Entity {
         super.move();
         if (pos.x == 0) pos.x = w;
     }
-
 }
 
 class Border extends Entity {
