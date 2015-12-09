@@ -9,6 +9,7 @@ ArrayList story;
 ArrayList stages;
 int story_index = 0;
 int stage_index = 0;
+boolean stage_finished = true;
 
 Player player;
 float base_speed = 3;
@@ -28,71 +29,11 @@ boolean key_space_released = true;
 /* Setting up canvas. */
 void setup() {
     load_story();
-    //load_stages();
+    load_stages();
 
     smooth();
     size(w, h);
     frameRate(30);
-}
-
-/* Tracking which keys have been pressed. */
-void keyPressed() {
-    if (key == 'w') key_up = true;
-    else if (key == 's') key_down = true;
-    else if (key == 'a') key_left = true;
-    else if (key == 'd') key_right = true;
-    else if (key_space_released && (key == ' ' || keyCode == ENTER)) {key_space = true; key_space_released = false;}
-}
-
-void keyReleased() {
-    if (key == 'w') key_up = false;
-    else if (key == 's') key_down = false;
-    else if (key == 'a') key_left = false;
-    else if (key == 'd') key_right = false;
-    else if (key == ' ' || keyCode == ENTER) {key_space = false; key_space_released = true;}
-}
-
-void check_keys() {
-    /* directions */
-    if (key_up) player.speed.y = -base_speed;
-    else if (key_down) player.speed.y = base_speed;
-    else player.speed.y = 0;
-
-    if (key_left) player.speed.x = -base_speed;
-    else if (key_right) player.speed.x = base_speed;
-    else player.speed.x = 0;
-
-    /* fire bullet */
-    if (key_space) {
-        player.fire_bullet();
-        key_space = false;
-    }
-}
-
-/* Update positions, collisions, etc. */
-void update() {
-    // update positions
-    for (int i = 0; i < entities.size(); i++) {
-        // background, actors
-        ArrayList list = entities.get(i);
-        for (int j = list.size()-1; j >= 0; j--) {
-            Entity e = list.get(j);
-            e.move(); // move every entity
-
-            // TODO collision detection
-
-            // remove unused bullets & backgrounds
-            if (e instanceof Bullet && (e.pos.x == w || e.pos.y == h)) {
-                if (debug) println('Bullet ' + e.id + ' fell out of canvas.');
-                list.remove(j);
-                continue;
-            }
-            else if (e instanceof Border && e.pos.x < -50) {
-                //if (debug) println('Border ' + e.id + ' fell out of canvas.');
-                list.remove(j);
-            }
-        }
-    }
 }
 
 /* Main loop */
@@ -109,20 +50,53 @@ void draw() {
         story_index += 1;
         if (story_index == story.size()-1) state = "game";
     } else if (state.equals("game")) {
-        if (stage_index == 0) {
-            populate_bg();
-            stage_index += 1;
+        if (stage_finished) {
+            populate_stage();
+            stage_finished = false;
         }
 
+        // main steps
         check_keys();
         update();
+        draw_scene();
+    }
+}
 
-        // draw entities
-        for (int i = 0; i < entities.size(); i++) {
-            ArrayList list = entities.get(i);
-            for (int j = 0; j < list.size(); j++) {
-                Entity e = list.get(j);
-                if (e instanceof Border) {
+/* Update positions, collisions, etc. */
+void update() {
+    // update positions
+    for (int i = 0; i < entities.size(); i++) {
+        // bg_entities, , collectables, actors
+        ArrayList list = entities.get(i);
+        for (int j = list.size()-1; j >= 0; j--) {
+            Entity e = list.get(j);
+            e.move(); // move every entity
+
+            // TODO collision detection
+            // TODO set stage_index++ if all enemies died
+
+            // remove unused bullets & backgrounds
+            if (e instanceof Bullet && (e.pos.x == w || e.pos.y == h)) {
+                if (debug) println('Bullet ' + e.id + ' fell out of canvas.');
+                list.remove(j);
+                continue;
+            }
+            else if (e instanceof Border && e.pos.x < -50) {
+                //if (debug) println('Border ' + e.id + ' fell out of canvas.');
+                list.remove(j);
+            }
+        }
+    }
+}
+
+void draw_scene() {
+    // draw entities
+    for (int i = 0; i < entities.size(); i++) {
+        ArrayList list = entities.get(i);
+        for (int j = 0; j < list.size(); j++) {
+            Entity e = list.get(j);
+            if (e instanceof Border) {
+                if (e.pos.x <= w) { // only draw borders if visible
                     stroke(50);
                     fill(50);
                     beginShape();
@@ -135,33 +109,46 @@ void draw() {
                     endShape();
                     stroke(0);
                     fill(255);
-                } else {
-                    x = e.pos.x;
-                    y = e.pos.y;
-                    pushMatrix();
-                    translate(x, y);
-                    ////rotate(b.rot);
-                    image(e.img, -e.img.width/2, -e.img.height/2);
-                    popMatrix();
                 }
+            } else {
+                println("Drawing: " + e.id);
+                x = e.pos.x;
+                y = e.pos.y;
+                pushMatrix();
+                translate(x, y);
+                ////rotate(b.rot);
+                image(e.img, -e.img.width/2, -e.img.height/2);
+                popMatrix();
             }
         }
     }
 }
 
-/* Helper functions */
-void load_story() {
-    String[] lines = loadStrings("story.dat");
-    story = new ArrayList();
-    for (int i = 1; i < lines.length; i++) {
-        String[] parts = split(lines[i], "|");
-        story.add(parts);
+/* --------------- populate --------------- */
+
+void populate_stage() {
+    println("Until here...");
+    if (stage_index == 0) populate_initial();
+
+    String[] stage = stages.get(stage_index);
+    println("Stage: " + stage);
+
+    String[] type = split(stage[3], ',');
+    String[] count = split(stage[4], ',');
+    String[] health = split(stage[5], ',');
+    String powerup = stage[6];
+
+    // single enemies
+    for (int i = 0; i < int(count[0]); i++) {
+        PVector pos = new PVector(w + 30*(i-i%8)/8, 100 + i%8*15);
+        PVector speed = new PVector(-0.5, 1);
+        Enemy e = new Enemy(pos, speed, type[0], int(health[0]));
+        println("Created enemy with id = " + e.id);
+        actors.add(e);
     }
-    if (debug) println('Loaded ' + story.size() + ' story entries.');
 }
 
-/* populate */
-void populate_bg() {
+void populate_initial() {
     // build player
     PVector speed = new PVector(0, 0);
     PVector pos = new PVector(w/3, h/2);
@@ -214,11 +201,66 @@ void populate_bg() {
     }
 }
 
-/*
-void populate_enemies() { }
-*/
+/* --------------- helper functions --------------- */
 
-/* --------------- Class definitions --------------- */
+void load_story() {
+    String[] lines = loadStrings("story.dat");
+    story = new ArrayList();
+    for (int i = 1; i < lines.length; i++) {
+        String[] parts = split(lines[i], "|");
+        story.add(parts);
+    }
+    if (debug) println('Loaded ' + story.size() + ' story entries.');
+}
+
+void load_stages() {
+    String[] lines = loadStrings("stages.dat");
+    stages = new ArrayList();
+    for (int i = 1; i < lines.length; i++) {
+        String[] parts = split(lines[i], "|");
+        stages.add(parts);
+    }
+    if (debug) println('Loaded ' + stages.size() + ' stage entries.');
+}
+
+/* --------------- keyboard input --------------- */
+
+/* Tracking which keys have been pressed. */
+void keyPressed() {
+    if (key == 'w') key_up = true;
+    else if (key == 's') key_down = true;
+    else if (key == 'a') key_left = true;
+    else if (key == 'd') key_right = true;
+    else if (key_space_released && (key == ' ' || keyCode == ENTER)) {key_space = true; key_space_released = false;}
+}
+
+void keyReleased() {
+    if (key == 'w') key_up = false;
+    else if (key == 's') key_down = false;
+    else if (key == 'a') key_left = false;
+    else if (key == 'd') key_right = false;
+    else if (key == ' ' || keyCode == ENTER) {key_space = false; key_space_released = true;}
+}
+
+void check_keys() {
+    /* directions */
+    if (key_up) player.speed.y = -base_speed;
+    else if (key_down) player.speed.y = base_speed;
+    else player.speed.y = 0;
+
+    if (key_left) player.speed.x = -base_speed;
+    else if (key_right) player.speed.x = base_speed;
+    else player.speed.x = 0;
+
+    /* fire bullet */
+    if (key_space) {
+        player.fire_bullet();
+        key_space = false;
+    }
+}
+
+
+/* --------------- class definitions --------------- */
 
 /* Main Entity */
 class Entity {
@@ -234,6 +276,7 @@ class Entity {
     }
 
     void set_image(String name) {
+        if (debug) println("Loaded image: " + name);
         img = loadImage("img/" + name + ".png");
     }
 
@@ -251,24 +294,95 @@ class Entity {
 }
 
 /* Actor entities */
-class Player extends Entity {
-    Player(PVector _pos, PVector _speed) {
+class Actor extends Entity {
+    int health;
+
+    Actor(PVector _pos, PVector _speed, String _type) {
         super(_pos, _speed);
-        super.set_image("player");
+        super.set_image(_type);
     }
-    void fire_bullet() {
-        PVector speed = new PVector(base_speed + 1, 0);
-        Bullet s = new Bullet(pos, speed);
-        if (debug) println('Firing bullet ' + s.id + '...');
+
+    void fire_bullet(int direction, int damage) {
+        println("Actor fires bullet with pos = " + pos);
+        PVector speed = new PVector(direction*(base_speed + 1), 0);
+        Bullet s = new Bullet(pos, speed, damage);
         collectables.add(s);
+        println("Actor finished firing bullet!");
+    }
+
+    void get_hit(int damage) {
+        health -= damage;
+    }
+}
+
+class Player extends Actor {
+    int bullet_damage = 10;
+    int bullet_direction = 1;
+
+    Player(PVector _pos, PVector _speed) {
+        super(_pos, _speed, "player");
+        health = 100;
+    }
+
+    void fire_bullet() {
+        super.fire_bullet(bullet_direction, bullet_damage);
+    }
+}
+
+class Enemy extends Actor {
+    PVector buffer;
+
+    Enemy(PVector _pos, PVector _speed, String _type, int _health) {
+        super(_pos, _speed, _type);
+        health = _health;
+        buffer = new PVector(100, h/2);
+    }
+
+    void fire_bullet() {
+        super.fire_bullet(-1);
+    }
+
+    void move() {
+        // move into field if buffer > 0
+        if (buffer.x > 0) {
+            buffer.x += speed.x;
+            pos.x += speed.x;
+        }
+
+        // y movement
+        if (buffer.y > 180 || buffer.y < 120) {
+            speed.y *= -1;
+        }
+        buffer.y += speed.y;
+        pos.y += speed.y;
+
+        // TODO fire shot at random
     }
 }
 
 /* Collectable entities */
-class Bullet extends Entity {
-    Bullet(PVector _pos, PVector _speed) {
+class Collectable extends Entity {
+    Collectable(PVector _pos, PVector _speed, String _type) {
         super(_pos, _speed);
-        super.set_image("bullet0");
+        super.set_image(_type);
+    }
+}
+
+class Bullet extends Collectable {
+    int damage;
+
+    Bullet(PVector _pos, PVector _speed, int _damage) {
+        super(_pos, _speed, "bullet0");
+        damage = _damage;
+    }
+}
+
+class Powerup extends Collectable {
+    String type; // guns, armor, health
+
+    Powerup(PVector _pos, PVector _speed, String _type) {
+        super(_pos, _speed, "powerup_" + _type);
+        type = _type;
     }
 }
 
