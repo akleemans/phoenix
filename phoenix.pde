@@ -4,12 +4,13 @@ int h = 300;
 int w = 500;
 String state = "game"; // menu, story, game, info
 
-// data
+// data to be loaded
 ArrayList story;
 ArrayList stages;
 int story_index = 0;
 int stage_index = 0;
 boolean stage_finished = true;
+HashMap images;
 
 Player player;
 float base_speed = 3;
@@ -30,6 +31,7 @@ boolean key_space_released = true;
 void setup() {
     load_story();
     load_stages();
+    load_images();
 
     smooth();
     size(w, h);
@@ -111,7 +113,6 @@ void draw_scene() {
                     fill(255);
                 }
             } else {
-                println("Drawing: " + e.id);
                 x = e.pos.x;
                 y = e.pos.y;
                 pushMatrix();
@@ -223,6 +224,19 @@ void load_stages() {
     if (debug) println('Loaded ' + stages.size() + ' stage entries.');
 }
 
+void load_images() {
+    images = new HashMap();
+    String[] image_strings = {"player", "enemy0", "bullet0", "enemy_bullet0",
+    "spark0", "spark1", "spark2", "powerup_guns", "powerup_health"};
+    for (int i = 0; i < image_strings.length; i++) {
+        String name = image_strings[i];
+        if (debug) println("Preloading " + name + "...");
+        PImage img = loadImage("img/" + name + ".png");
+        images.put(name, img);
+    }
+    if (debug) println('Loaded ' + images.size() + ' images.');
+}
+
 /* --------------- keyboard input --------------- */
 
 /* Tracking which keys have been pressed. */
@@ -276,8 +290,7 @@ class Entity {
     }
 
     void set_image(String name) {
-        if (debug) println("Loaded image: " + name);
-        img = loadImage("img/" + name + ".png");
+        img = images.get(name);
     }
 
     /* Moving */
