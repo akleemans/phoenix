@@ -14,11 +14,10 @@ HashMap images;
 
 Player player;
 float base_speed = 3;
-ArrayList entities = new ArrayList();
 int entity_index = 0;
-ArrayList bg_entities = new ArrayList();     // sparks, borders, speech bubbles, explosions
+ArrayList bg_entities = new ArrayList();    // sparks, borders, speech bubbles, explosions
 ArrayList collectables = new ArrayList();   // bullets, powerups
-ArrayList actors = new ArrayList();         // player, enemies
+ArrayList enemies = new ArrayList();        // enemies
 
 boolean key_up = false;
 boolean key_down = false;
@@ -40,13 +39,12 @@ void setup() {
 
 /* Main loop */
 void draw() {
-    /* drawing */
     background(255);
     stroke(0, 0, 0);
     rect(0, 0, w-1, h-1);
 
     if (state.equals("menu")) {
-        // menu
+        // TODO add menu
     } else if (state.equals("story")) {
         println(story.get(story_index)[2]);
         story_index += 1;
@@ -66,63 +64,99 @@ void draw() {
 
 /* Update positions, collisions, etc. */
 void update() {
-    // update positions
-    for (int i = 0; i < entities.size(); i++) {
-        // bg_entities, , collectables, actors
-        ArrayList list = entities.get(i);
-        for (int j = list.size()-1; j >= 0; j--) {
-            Entity e = list.get(j);
-            e.move(); // move every entity
+    // background: sparks, borders
+    for (int i = 0; i < bg_entities.size(); i++) {
+        Entity e = bg_entities.get(i);
+        e.move();
+        if (e.pos.x < -50) bg_entities.remove(i);
+    }
 
-            // TODO collision detection
-            // TODO set stage_index++ if all enemies died
+    // collectables: bullets, powerups
+    for (int i = 0; i < collectables.size(); i++) {
+        Collectable c = collectables.get(i);
+        c.move();
+        if (c.pos.x == w || c.pos.y == h) {
+            if (debug) println('Bullet ' + c.id + ' fell out of canvas.');
+            collectables.remove(i);
+        }
+    }
 
-            // remove unused bullets & backgrounds
-            if (e instanceof Bullet && (e.pos.x == w || e.pos.y == h)) {
-                if (debug) println('Bullet ' + e.id + ' fell out of canvas.');
-                list.remove(j);
+    // enemies
+    for (int i = enemies.size()-1; i >= 0; i--) {
+        Enemy e = enemies.get(i);
+        e.move();
+        for (int j = collectables.size()-1; j >= 0; j--) {
+            Collectable c = collectables.get(j);
+            if (c instanceof PlayerBullet && check_collision(e, c)) {
+                e.get_hit(c.damage);
+                collectables.remove(j);
+            }
+            if (e.health <= 0) {
+                enemies.remove(i);
                 continue;
             }
-            else if (e instanceof Border && e.pos.x < -50) {
-                //if (debug) println('Border ' + e.id + ' fell out of canvas.');
-                list.remove(j);
-            }
+        }
+    }
+
+    // player
+    player.move();
+    for (int i = collectables.size()-1; i >= 0; i--) {
+        Collectable c = collectables.get(j);
+        if (c instanceof EnemyBullet && check_collision(e, c)) {
+            player.get_hit(c.damage);
+            collectables.remove(i);
+        }
+        else if (c instanceof Powerup && check_collision(e, c)) {
+            player.collect(c.type);
+            collectables.remove(i);
         }
     }
 }
 
 void draw_scene() {
     // draw entities
+    ArrayList entities = new ArrayList();
+    entities.addAll(bg_entities);
+    entities.addAll(collectables);
+    entities.addAll(enemies);
+    entities.add(player);
+
     for (int i = 0; i < entities.size(); i++) {
-        ArrayList list = entities.get(i);
-        for (int j = 0; j < list.size(); j++) {
-            Entity e = list.get(j);
-            if (e instanceof Border) {
-                if (e.pos.x <= w) { // only draw borders if visible
-                    stroke(50);
-                    fill(50);
-                    beginShape();
-                    int x = e.pos.x;
-                    int y = e.pos.y;
-                    vertex(x+e.pos1.x, y+e.pos1.y);
-                    vertex(x+e.pos2.x, y+e.pos2.y);
-                    vertex(x+e.pos3.x, y+e.pos3.y);
-                    vertex(x+e.pos4.x, y+e.pos4.y);
-                    endShape();
-                    stroke(0);
-                    fill(255);
-                }
-            } else {
-                x = e.pos.x;
-                y = e.pos.y;
-                pushMatrix();
-                translate(x, y);
-                ////rotate(b.rot);
-                image(e.img, -e.img.width/2, -e.img.height/2);
-                popMatrix();
+        Entity e = entities.get(i);
+        if (e instanceof Border) {
+            if (e.pos.x <= w) { // only draw borders if visible
+                stroke(50);
+                fill(50);
+                beginShape();
+                int x = e.pos.x;
+                int y = e.pos.y;
+                vertex(x+e.pos1.x, y+e.pos1.y);
+                vertex(x+e.pos2.x, y+e.pos2.y);
+                vertex(x+e.pos3.x, y+e.pos3.y);
+                vertex(x+e.pos4.x, y+e.pos4.y);
+                endShape();
+                stroke(0);
+                fill(255);
             }
+        } else {
+            x = e.pos.x;
+            y = e.pos.y;
+            pushMatrix();
+            translate(x, y);
+            ////rotate(b.rot);
+            image(e.img, -e.img.width/2, -e.img.height/2);
+            popMatrix();
         }
     }
+}
+
+boolean check_collision(Actor a, Collectable c) {
+    int[] r1 = {a.pos.x, a.pos.y, a.img.width, a.img.height};
+    int[] r2 = {c.pos.x, c.pos.y, c.img.width, c.img.height};
+    if (r1[0] > r2[0] + r2[2] || r1[0] + r1[2] < r2[0] || r1[1] > r2[1] + r2[3] || r1[1] + r1[3] < r2[1]) {
+        return false;
+    }
+    return true;
 }
 
 /* --------------- populate --------------- */
@@ -145,7 +179,7 @@ void populate_stage() {
         PVector speed = new PVector(-0.5, 1);
         Enemy e = new Enemy(pos, speed, type[0], int(health[0]));
         println("Created enemy with id = " + e.id);
-        actors.add(e);
+        enemies.add(e);
     }
 }
 
@@ -154,12 +188,6 @@ void populate_initial() {
     PVector speed = new PVector(0, 0);
     PVector pos = new PVector(w/3, h/2);
     player = new Player(pos, speed);
-
-    // build entity list
-    entities.add(bg_entities);
-    entities.add(collectables);
-    entities.add(actors);
-    actors.add(player);
 
     // sparks
     for (int i = 0; i < 40; i++) {
@@ -309,18 +337,11 @@ class Entity {
 /* Actor entities */
 class Actor extends Entity {
     int health;
+    int damage;
 
     Actor(PVector _pos, PVector _speed, String _type) {
         super(_pos, _speed);
         super.set_image(_type);
-    }
-
-    void fire_bullet(int direction, int damage) {
-        println("Actor fires bullet with pos = " + pos);
-        PVector speed = new PVector(direction*(base_speed + 1), 0);
-        Bullet s = new Bullet(pos, speed, damage);
-        collectables.add(s);
-        println("Actor finished firing bullet!");
     }
 
     void get_hit(int damage) {
@@ -329,16 +350,23 @@ class Actor extends Entity {
 }
 
 class Player extends Actor {
-    int bullet_damage = 10;
-    int bullet_direction = 1;
-
     Player(PVector _pos, PVector _speed) {
         super(_pos, _speed, "player");
         health = 100;
+        damage = 10;
     }
 
     void fire_bullet() {
-        super.fire_bullet(bullet_direction, bullet_damage);
+        PVector speed = new PVector(5, 0);
+        PlayerBullet b = new PlayerBullet(pos, speed, damage);
+        collectables.add(b);
+    }
+
+    void collect(String type) {
+        if (type.equals("health")) {
+            health += 50;
+        }
+        // TODO add other powerups, guns & armor
     }
 }
 
@@ -348,11 +376,14 @@ class Enemy extends Actor {
     Enemy(PVector _pos, PVector _speed, String _type, int _health) {
         super(_pos, _speed, _type);
         health = _health;
+        damage = 10;
         buffer = new PVector(100, h/2);
     }
 
     void fire_bullet() {
-        super.fire_bullet(-1);
+        PVector speed = new PVector(-4, 0);
+        EnemyBullet b = new EnemyBullet(pos, speed, damage);
+        collectables.add(b);
     }
 
     void move() {
@@ -369,7 +400,7 @@ class Enemy extends Actor {
         buffer.y += speed.y;
         pos.y += speed.y;
 
-        // TODO fire shot at random
+        if (random(200) == 17) fire_bullet();
     }
 }
 
@@ -381,18 +412,24 @@ class Collectable extends Entity {
     }
 }
 
-class Bullet extends Collectable {
+class PlayerBullet extends Collectable {
     int damage;
-
-    Bullet(PVector _pos, PVector _speed, int _damage) {
+    PlayerBullet(PVector _pos, PVector _speed, int _damage) {
         super(_pos, _speed, "bullet0");
+        damage = _damage;
+    }
+}
+
+class EnemyBullet extends Collectable {
+    int damage;
+    EnemyBullet(PVector _pos, PVector _speed, int _damage) {
+        super(_pos, _speed, "enemy_bullet0");
         damage = _damage;
     }
 }
 
 class Powerup extends Collectable {
     String type; // guns, armor, health
-
     Powerup(PVector _pos, PVector _speed, String _type) {
         super(_pos, _speed, "powerup_" + _type);
         type = _type;
