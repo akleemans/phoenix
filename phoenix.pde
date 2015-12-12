@@ -75,7 +75,7 @@ void update() {
     for (int i = 0; i < collectables.size(); i++) {
         Collectable c = collectables.get(i);
         c.move();
-        if (c.pos.x == w || c.pos.y == h) {
+        if (c.pos.x > w+20 || c.pos.y > h+20 || c.pos.x < -20 || c.pos.y < -20) {
             if (debug) println('Bullet ' + c.id + ' fell out of canvas.');
             collectables.remove(i);
         }
@@ -93,7 +93,7 @@ void update() {
             }
             if (e.health <= 0) {
                 enemies.remove(i);
-                continue;
+                break;
             }
         }
     }
@@ -101,12 +101,12 @@ void update() {
     // player
     player.move();
     for (int i = collectables.size()-1; i >= 0; i--) {
-        Collectable c = collectables.get(j);
-        if (c instanceof EnemyBullet && check_collision(e, c)) {
+        Collectable c = collectables.get(i);
+        if (c instanceof EnemyBullet && check_collision(player, c)) {
             player.get_hit(c.damage);
             collectables.remove(i);
         }
-        else if (c instanceof Powerup && check_collision(e, c)) {
+        else if (c instanceof Powerup && check_collision(player, c)) {
             player.collect(c.type);
             collectables.remove(i);
         }
@@ -400,7 +400,8 @@ class Enemy extends Actor {
         buffer.y += speed.y;
         pos.y += speed.y;
 
-        if (random(200) == 17) fire_bullet();
+        if (int(random(200)) == 17) // magic number 17
+            fire_bullet();
     }
 }
 
@@ -409,6 +410,12 @@ class Collectable extends Entity {
     Collectable(PVector _pos, PVector _speed, String _type) {
         super(_pos, _speed);
         super.set_image(_type);
+    }
+
+    /* Moving */
+    void move() {
+        pos.x = pos.x + speed.x;
+        pos.y = pos.y + speed.y;
     }
 }
 
