@@ -65,10 +65,11 @@ void draw() {
 /* Update positions, collisions, etc. */
 void update() {
     // background: sparks, borders
-    for (int i = 0; i < bg_entities.size(); i++) {
+    for (int i = bg_entities.size()-1; i >= 0; i--) {
         Entity e = bg_entities.get(i);
         e.move();
         if (e.pos.x < -50) bg_entities.remove(i);
+        else if (e instanceof Explosion && e.type == 4) bg_entities.remove(i);
     }
 
     // collectables: bullets, powerups
@@ -92,6 +93,8 @@ void update() {
                 collectables.remove(j);
             }
             if (e.health <= 0) {
+                Explosion ex = new Explosion(e.pos);
+                bg_entities.add(ex);
                 enemies.remove(i);
                 break;
             }
@@ -255,7 +258,8 @@ void load_stages() {
 void load_images() {
     images = new HashMap();
     String[] image_strings = {"player", "enemy0", "bullet0", "enemy_bullet0",
-    "spark0", "spark1", "spark2", "powerup_guns", "powerup_health"};
+    "spark0", "spark1", "spark2", "powerup_guns", "powerup_health",
+    "explosion0", "explosion1", "explosion2", "explosion3"};
     for (int i = 0; i < image_strings.length; i++) {
         String name = image_strings[i];
         if (debug) println("Preloading " + name + "...");
@@ -469,5 +473,25 @@ class Border extends Entity {
 
     void move() {
         pos.x = pos.x + speed.x;
+    }
+}
+
+class Explosion extends Entity {
+    int last_sprite_change;
+    int type;
+    Explosion(PVector _pos) {
+        PVector speed = new PVector(0, 0);
+        super(_pos, speed);
+        super.set_image("explosion0");
+        type = 0;
+        last_sprite_change = frameCount;
+    }
+
+    void move() {
+        if (frameCount - last_sprite_change == 5) {
+            last_sprite_change = frameCount;
+            type += 1;
+            super.set_image("explosion" + str(type));
+        }
     }
 }
