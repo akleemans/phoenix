@@ -2,20 +2,23 @@
 boolean debug = true;
 int h = 300;
 int w = 500;
-String state = "game"; // menu, story, game, info
+String state = "story"; // menu, story, game
 
 // data to be loaded
 ArrayList story;
-ArrayList stages;
+//ArrayList stages;
 int story_index = 0;
+int story_timestamp = 0;
 int stage_index = 0;
 boolean stage_finished = true;
 HashMap images;
+PFont font;
 
 Player player;
 float base_speed = 3;
 int entity_index = 0;
 ArrayList bg_entities = new ArrayList();    // sparks, borders, speech bubbles, explosions
+ArrayList passives = new ArrayList();       // speech bubbles, text
 ArrayList collectables = new ArrayList();   // bullets, powerups
 ArrayList enemies = new ArrayList();        // enemies
 
@@ -29,8 +32,11 @@ boolean key_space_released = true;
 /* Setting up canvas. */
 void setup() {
     load_story();
-    load_stages();
+    //load_stages();
     load_images();
+    //font = loadFont("FFScala-Bold.ttf");
+    font = loadFont("Verdana.ttf");
+    textFont(font);
 
     smooth();
     size(w, h);
@@ -46,9 +52,21 @@ void draw() {
     if (state.equals("menu")) {
         // TODO add menu
     } else if (state.equals("story")) {
-        println(story.get(story_index)[2]);
-        story_index += 1;
-        if (story_index == story.size()-1) state = "game";
+        // new part of story
+        if (story_timestamp == 0 || story_timestamp == frameCount) {
+            if (story_index == story.size()) { // finished with story?
+                state = "game";
+                passives.clear();
+            }
+            else {
+                if (story_timestamp == 0) populate_initial();
+                add_bubble(story.get(story_index)[1], story.get(story_index)[2]);
+                story_timestamp = frameCount + 30; // * int(story.get(story_index)[0]);
+                story_index += 1;
+            }
+        }
+        update();
+        draw_scene();
     } else if (state.equals("game")) {
         if (stage_finished) {
             populate_stage();
@@ -120,6 +138,7 @@ void draw_scene() {
     // draw entities
     ArrayList entities = new ArrayList();
     entities.addAll(bg_entities);
+    entities.addAll(passives);
     entities.addAll(collectables);
     entities.addAll(enemies);
     entities.add(player);
@@ -146,11 +165,19 @@ void draw_scene() {
             y = e.pos.y;
             pushMatrix();
             translate(x, y);
-            ////rotate(b.rot);
             image(e.img, -e.img.width/2, -e.img.height/2);
             popMatrix();
+            if (e instanceof Bubble)
+                draw_text(e.txt, e.pos, e.txt_width, e.txt_height, 12);
         }
     }
+}
+
+void draw_text(String txt, PVector pos, int txt_width, int txt_height, int txt_size) {
+    fill(0);
+    textSize(txt_size);
+    text(txt, pos.x-txt_width/2, pos.y-txt_height/2, txt_width, txt_height);
+    fill(255);
 }
 
 boolean check_collision(Actor a, Collectable c) {
@@ -164,32 +191,31 @@ boolean check_collision(Actor a, Collectable c) {
 
 /* --------------- populate --------------- */
 
+/* level population */
 void populate_stage() {
-    println("Until here...");
-    if (stage_index == 0) populate_initial();
+    println("Stage: " + stage_index);
 
-    String[] stage = stages.get(stage_index);
-    println("Stage: " + stage);
+    switch (stage_index) {
+        case 0:
+            println("Stage 0");
+            for (int i = 0; i < 16; i++) {
+                PVector pos = new PVector(w + 30*(i-i%8)/8, 100 + i%8*15);
+                PVector speed = new PVector(-0.5, 1);
+                Enemy e = new Enemy(pos, speed, "enemy0", 10);
+                enemies.add(e);
+            }
+            break;
 
-    String[] type = split(stage[3], ',');
-    String[] count = split(stage[4], ',');
-    String[] health = split(stage[5], ',');
-    String powerup = stage[6];
-
-    // single enemies
-    for (int i = 0; i < int(count[0]); i++) {
-        PVector pos = new PVector(w + 30*(i-i%8)/8, 100 + i%8*15);
-        PVector speed = new PVector(-0.5, 1);
-        Enemy e = new Enemy(pos, speed, type[0], int(health[0]));
-        println("Created enemy with id = " + e.id);
-        enemies.add(e);
+        case 1:
+            println("Stage 1...");
+            break;
     }
 }
 
 void populate_initial() {
     // build player
     PVector speed = new PVector(0, 0);
-    PVector pos = new PVector(w/3, h/2);
+    PVector pos = new PVector(w/2, h/2); // w/3
     player = new Player(pos, speed);
 
     // sparks
@@ -245,21 +271,18 @@ void load_story() {
     if (debug) println('Loaded ' + story.size() + ' story entries.');
 }
 
-void load_stages() {
-    String[] lines = loadStrings("stages.dat");
-    stages = new ArrayList();
-    for (int i = 1; i < lines.length; i++) {
-        String[] parts = split(lines[i], "|");
-        stages.add(parts);
-    }
-    if (debug) println('Loaded ' + stages.size() + ' stage entries.');
+void add_bubble(String voice, String text) {
+    passives.clear();
+    Bubble b = new Bubble(voice, text);
+    passives.add(b);
 }
 
 void load_images() {
     images = new HashMap();
     String[] image_strings = {"player", "enemy0", "bullet0", "enemy_bullet0",
     "spark0", "spark1", "spark2", "powerup_guns", "powerup_health",
-    "explosion0", "explosion1", "explosion2", "explosion3"};
+    "explosion0", "explosion1", "explosion2", "explosion3",
+    "bubble_narrator", "bubble_voice0", "bubble_voice1"};
     for (int i = 0; i < image_strings.length; i++) {
         String name = image_strings[i];
         if (debug) println("Preloading " + name + "...");
@@ -493,5 +516,24 @@ class Explosion extends Entity {
             type += 1;
             super.set_image("explosion" + str(type));
         }
+    }
+}
+
+class Bubble extends Entity {
+    String txt;
+    int txt_width, txt_height;
+    Bubble(String _type, String _txt) {
+        // TODO pos depends on type
+        if (_type.equals("narrator")) int pos_x = w/2;
+        else if (_type.equals("voice0")) int pos_x = w/3;
+        else if (_type.equals("voice1")) int pos_x = 2*w/3;
+
+        PVector pos = new PVector(pos_x, h/3);
+        PVector speed = new PVector(0, 0);
+        txt = _txt;
+        txt_width = 104;
+        txt_height = 60;
+        super(pos, speed);
+        super.set_image("bubble_" + _type);
     }
 }
