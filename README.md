@@ -2,4 +2,4 @@
 
 An arcade side scroller game, more information to follow.
 
-[image]
+![Phoenix Screenshot](screenshot.png)
