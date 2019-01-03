@@ -3,6 +3,7 @@ boolean debug = false;
 int h = 300;
 int w = 500;
 String state = "menu"; // menu, story, game, finished
+String url_prefix = "https://www.kleemans.ch/static/phoenix/";
 
 // data to be loaded
 ArrayList story;
@@ -372,7 +373,7 @@ void populate_initial() {
 /* --------------- helper functions --------------- */
 
 void load_story() {
-    String[] lines = loadStrings("story.dat");
+    String[] lines = loadStrings(url_prefix + "story.dat");
     story = new ArrayList();
     for (int i = 1; i < lines.length; i++) {
         String[] parts = split(lines[i], "|");
@@ -397,7 +398,7 @@ void load_images() {
     for (int i = 0; i < image_strings.length; i++) {
         String name = image_strings[i];
         if (debug) println("Preloading " + name + "...");
-        PImage img = loadImage("img/" + name + ".png");
+        PImage img = loadImage(url_prefix = "img/" + name + ".png");
         images.put(name, img);
     }
     if (debug) println('Loaded ' + images.size() + ' images.');
