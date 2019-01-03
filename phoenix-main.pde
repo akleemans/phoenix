@@ -398,7 +398,7 @@ void load_images() {
     for (int i = 0; i < image_strings.length; i++) {
         String name = image_strings[i];
         if (debug) println("Preloading " + name + "...");
-        PImage img = loadImage(url_prefix = "img/" + name + ".png");
+        PImage img = loadImage(url_prefix + "img/" + name + ".png");
         images.put(name, img);
     }
     if (debug) println('Loaded ' + images.size() + ' images.');
