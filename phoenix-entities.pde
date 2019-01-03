@@ -83,17 +83,22 @@ class Player extends Actor {
 
 class Enemy extends Actor {
     PVector buffer;
+    String bullet_type = "enemy_bullet0";
 
     Enemy(PVector _pos, PVector _speed, String _type, int _health, int xbuffer) {
         super(_pos, _speed, _type);
         health = _health;
         damage = 10;
+        if (_type == "enemy2") {
+            damage = 20;
+            bullet_type = "enemy_bullet1";
+        }
         buffer = new PVector(xbuffer, h/2);
     }
 
     void fire_bullet() {
         PVector speed = new PVector(-4, 0);
-        EnemyBullet b = new EnemyBullet(pos, speed, damage);
+        EnemyBullet b = new EnemyBullet(pos, speed, damage, bullet_type);
         collectables.add(b);
     }
 
@@ -118,9 +123,15 @@ class Enemy extends Actor {
 
 class Boss extends Enemy {
     String powerup;
+    int random_pool = 50;
+
     Boss(PVector _pos, PVector _speed, String _type, int _health, int xbuffer, String _powerup) {
         super(_pos, _speed, _type, _health, xbuffer);
         powerup = _powerup;
+        // end boss fires faster
+        if (_type == "boss1") {
+            random_pool = 20;
+        }
     }
 
     /* boss also moves sideways */
@@ -133,7 +144,7 @@ class Boss extends Enemy {
         buffer.y += speed.y;
         pos.y += speed.y;
 
-        if (int(random(50)) == 17) // magic number 17
+        if (int(random(random_pool)) == 17) // magic number 17
             fire_bullet();
     }
 
@@ -163,8 +174,8 @@ class PlayerBullet extends Collectable {
 
 class EnemyBullet extends Collectable {
     int damage;
-    EnemyBullet(PVector _pos, PVector _speed, int _damage) {
-        super(_pos, _speed, "enemy_bullet0");
+    EnemyBullet(PVector _pos, PVector _speed, int _damage, String bullet_type) {
+        super(_pos, _speed, bullet_type);
         damage = _damage;
     }
 }

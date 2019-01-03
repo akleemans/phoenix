@@ -1,5 +1,5 @@
 // general stuff
-boolean debug = true;
+boolean debug = false;
 int h = 300;
 int w = 500;
 String state = "menu"; // menu, story, game, finished
@@ -10,7 +10,7 @@ boolean menu_initialized = false;
 int story_index = 0;
 int story_timestamp = 0;
 int stage_index = 0;
-int max_stage_index = 2;
+int max_stage_index = 12;
 boolean stage_finished = true;
 boolean won = false;
 int stage_timestamp = 0;
@@ -169,6 +169,9 @@ void update() {
     }
 
     // player
+    if (border_collision()) {
+        player.health -= 1;
+    }
     if (player != null) {
         player.move();
     }
@@ -245,6 +248,10 @@ boolean check_collision(Actor a, Collectable c) {
     return true;
 }
 
+boolean border_collision() {
+    return player.pos.y < 50 || player.y > 250;
+}
+
 /* --------------- populate --------------- */
 
 /* level population */
@@ -294,9 +301,26 @@ void populate_stage() {
             break;
 
         case 9:
+            for (int i = 0; i < 16; i++) enemies.add(new Enemy(new PVector(w + 20*(i-i%8)/8, 100 + i%8*15), new PVector(-0.5, 1), "enemy2", 40, 150));
+            break;
+
+        case 10:
+            for (int i = 0; i < 16; i++) enemies.add(new Enemy(new PVector(w + 20*(i-i%8)/8, 100 + i%8*15), new PVector(-0.5, 1), "enemy1", 20, 130));
+            for (int i = 0; i < 16; i++) enemies.add(new Enemy(new PVector(w + 100 + 20*(i-i%8)/8, 100 + i%8*15), new PVector(-0.5, 1), "enemy2", 40, 180));
+            break;
+
+        case 11:
+            for (int i = 0; i < 16; i++) enemies.add(new Enemy(new PVector(w + 20*(i-i%8)/8, 100 + i%8*15), new PVector(-0.5, 1), "enemy2", 40, 150));
+            enemies.add(new Boss(new PVector(w + 100, h/2-20), new PVector(-0.8, 1.5), "boss0", 150, 80, "health"));
             enemies.add(new Boss(new PVector(w + 100, h/2+20), new PVector(-0.6, 1.5), "boss0", 150, 80, ""));
             break;
 
+        case 12:
+            for (int i = 0; i < 16; i++) enemies.add(new Enemy(new PVector(w + 20*(i-i%8)/8, 100 + i%8*15), new PVector(-0.5, 1), "enemy0", 10, 130));
+            for (int i = 0; i < 16; i++) enemies.add(new Enemy(new PVector(w + 94 + 20*(i-i%8)/8, 100 + i%8*15), new PVector(-0.5, 1), "enemy1", 20, 180));
+            for (int i = 0; i < 16; i++) enemies.add(new Enemy(new PVector(w + 190 + 20*(i-i%8)/8, 100 + i%8*15), new PVector(-0.5, 1), "enemy2", 40, 230));
+            enemies.add(new Boss(new PVector(w + 100, h/2+20), new PVector(-0.6, 1.5), "boss1", 300, 80, ""));
+            break;
     }
 }
 
