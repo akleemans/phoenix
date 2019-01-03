@@ -50,6 +50,7 @@ class Player extends Actor {
     Player(PVector _pos, PVector _speed) {
         super(_pos, _speed, "player");
         health = 100;
+        max_health = 100;
         damage = 10;
     }
 
@@ -69,6 +70,10 @@ class Player extends Actor {
     void collect(Powerup p) {
         if (debug) println("Collected powerup: " + p.type);
         health += p.health;
+
+        if (health > max_health) {
+            health = max_health;
+        }
         armor += p.armor;
         if (p.damage != 0) {
             damage += p.damage;

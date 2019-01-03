@@ -2,14 +2,17 @@
 boolean debug = true;
 int h = 300;
 int w = 500;
-String state = "story"; // menu, story, game
+String state = "menu"; // menu, story, game, finished
 
 // data to be loaded
 ArrayList story;
+boolean menu_initialized = false;
 int story_index = 0;
 int story_timestamp = 0;
 int stage_index = 0;
+int max_stage_index = 2;
 boolean stage_finished = true;
+boolean won = false;
 int stage_timestamp = 0;
 HashMap images;
 PFont font;
@@ -48,16 +51,27 @@ void draw() {
     rect(0, 0, w-1, h-1);
 
     if (state.equals("menu")) {
-        // TODO add menu
+        draw_text("Press space to start", new PVector(310, 220), 300, 100, 20);
+        if (!menu_initialized) {
+            PVector speed = new PVector(0, 0);
+            PVector pos = new PVector(250, 100);
+            Spark s = new Spark(pos, speed, "logo");
+            bg_entities.add(s);
+            menu_initialized = true;
+        }
+        check_menu_keys();
+        draw_scene();
     } else if (state.equals("story")) {
         // new part of story
         if (story_timestamp == 0 || story_timestamp == frameCount) {
             if (story_index == story.size()) { // finished with story?
                 state = "game";
                 passives.clear();
-            }
-            else {
-                if (story_timestamp == 0) populate_initial();
+            } else {
+                if (story_timestamp == 0) {
+                    bg_entities.clear();
+                    populate_initial();
+                }
                 add_bubble(story.get(story_index)[1], story.get(story_index)[2]);
                 story_timestamp = frameCount + 30 * int(story.get(story_index)[0]);
                 story_index += 1;
@@ -65,26 +79,47 @@ void draw() {
         }
         update();
         draw_scene();
+        // TODO skip story possible?
+
         if (skip_story()) {
             story_timestamp = 0;
             story_index = story.size()
         }
     } else if (state.equals("game")) {
         if (stage_finished && stage_timestamp <= frameCount) {
+            if (stage_index == max_stage_index) {
+                if (debug) println("Max stage reached, finish");
+                state = "finished";
+                won = true;
+            }
             populate_stage();
             stage_finished = false;
             stage_index += 1;
+            if (debug) println("draw(), stage_index = " + stage_index + " - max_stage_index = " + max_stage_index);
         }
 
         // main steps
         check_keys();
         update();
         draw_scene();
+    } else if (state.equals("finished")) {
+        if (won) {
+            draw_text("VICTORY!", new PVector(300, 160), 300, 100, 50);
+            draw_text("Thanks for playing! :)", new PVector(320, 220), 300, 100, 20);
+        } else {
+            draw_text("DEFEAT", new PVector(310, 170), 300, 100, 50);
+        }
+        draw_scene();
     }
 }
 
 /* Update positions, collisions, etc. */
 void update() {
+    // check if game finished
+    if (player.health <= 0) {
+        state = "finished";
+    }
+
     // check if stage finished
     if (!stage_finished && state.equals("game") && enemies.size() == 0) {
         if (debug) println("Finished stage.");
@@ -134,7 +169,9 @@ void update() {
     }
 
     // player
-    player.move();
+    if (player != null) {
+        player.move();
+    }
     for (int i = collectables.size()-1; i >= 0; i--) {
         Collectable c = collectables.get(i);
         if (c instanceof EnemyBullet && check_collision(player, c)) {
@@ -156,7 +193,7 @@ void draw_scene() {
     entities.addAll(passives);
     entities.addAll(collectables);
     entities.addAll(enemies);
-    entities.add(player);
+    if (player != null) entities.add(player);
 
     for (int i = 0; i < entities.size(); i++) {
         Entity e = entities.get(i);
@@ -188,7 +225,7 @@ void draw_scene() {
     }
     // draw health bar
     fill(127, 209, 59);
-    rect(w/5, h-8, player.health*3, 3)
+    if (player != null) rect(w/5, h-8, player.health*3, 3);
     fill(255);
 }
 
@@ -256,7 +293,7 @@ void populate_stage() {
             enemies.add(new Boss(new PVector(w + 100, h/2+20), new PVector(-0.6, 1.5), "boss0", 150, 80, ""));
             break;
 
-        case 9: // borders incoming
+        case 9:
             enemies.add(new Boss(new PVector(w + 100, h/2+20), new PVector(-0.6, 1.5), "boss0", 150, 80, ""));
             break;
 
@@ -284,7 +321,7 @@ void populate_initial() {
     PVector speed = new PVector(-2, 0);
     PVector pos1 = new PVector(0, 0);
     PVector pos2 = new PVector(0, 30);
-    for (int i = 0; i < 200; i++) {
+    for (int i = 0; i < 400; i++) {
         PVector pos3 = new PVector(20 + random(30), 20 + random(30));
         PVector pos4 = new PVector(pos3.x, 0);
         Border border = new Border(pos, speed, pos1, pos2, pos3, pos4);
@@ -299,7 +336,7 @@ void populate_initial() {
     PVector speed = new PVector(-2, 0);
     PVector pos1 = new PVector(0, h);
     PVector pos2 = new PVector(0, 30);
-    for (int i = 0; i < 200; i++) {
+    for (int i = 0; i < 400; i++) {
         PVector pos3 = new PVector(20 + random(30), 50 - (20 + random(30)));
         PVector pos4 = new PVector(pos3.x, h);
         Border border = new Border(pos, speed, pos1, pos2, pos3, pos4);
@@ -330,10 +367,11 @@ void add_bubble(String voice, String text) {
 
 void load_images() {
     images = new HashMap();
-    String[] image_strings = {"player", "enemy0", "bullet0", "enemy_bullet0",
+    String[] image_strings = {"logo", "player", "enemy0", "bullet0", "enemy_bullet0",
     "spark0", "spark1", "spark2", "powerup_guns", "powerup_health",
     "explosion0", "explosion1", "explosion2", "explosion3",
-    "bubble_narrator", "bubble_voice0", "bubble_voice1", "boss0", "enemy1"};
+    "bubble_narrator", "bubble_voice0", "bubble_voice1", "boss0", "enemy1",
+    "boss1", "enemy2", "enemy_bullet1"};
     for (int i = 0; i < image_strings.length; i++) {
         String name = image_strings[i];
         if (debug) println("Preloading " + name + "...");
@@ -376,6 +414,12 @@ void check_keys() {
     if (key_space) {
         player.fire_bullet();
         key_space = false;
+    }
+}
+
+void check_menu_keys() {
+    if (key_space) {
+        state = "story";
     }
 }
 
