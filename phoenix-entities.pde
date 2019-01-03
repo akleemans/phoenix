@@ -191,7 +191,7 @@ class Powerup extends Collectable {
         type = _type;
         if (type.equals("guns")) damage = 10;
         else if (type.equals("armor")) armor = 20;
-        else if (type.equals("health")) health = 50;
+        else if (type.equals("health")) health = 30;
     }
 }
 

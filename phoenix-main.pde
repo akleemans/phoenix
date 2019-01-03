@@ -10,7 +10,7 @@ boolean menu_initialized = false;
 int story_index = 0;
 int story_timestamp = 0;
 int stage_index = 0;
-int max_stage_index = 12;
+int max_stage_index = 13;
 boolean stage_finished = true;
 boolean won = false;
 int stage_timestamp = 0;
@@ -79,19 +79,17 @@ void draw() {
         }
         update();
         draw_scene();
-        // TODO skip story possible?
-
-        if (skip_story()) {
+        if (debug && skip_story()) {
             story_timestamp = 0;
             story_index = story.size()
         }
     } else if (state.equals("game")) {
+        if (stage_finished && stage_index == max_stage_index) {
+            if (debug) println("Max stage reached, finish");
+            state = "finished";
+            won = true;
+        }
         if (stage_finished && stage_timestamp <= frameCount) {
-            if (stage_index == max_stage_index) {
-                if (debug) println("Max stage reached, finish");
-                state = "finished";
-                won = true;
-            }
             populate_stage();
             stage_finished = false;
             stage_index += 1;
@@ -339,13 +337,12 @@ void populate_initial() {
         bg_entities.add(s);
     }
 
-    // TODO repeat border generation if we run out of borders
     // upper border
     PVector pos = new PVector(0, 0);
     PVector speed = new PVector(-2, 0);
     PVector pos1 = new PVector(0, 0);
     PVector pos2 = new PVector(0, 30);
-    for (int i = 0; i < 400; i++) {
+    for (int i = 0; i < 500; i++) {
         PVector pos3 = new PVector(20 + random(30), 20 + random(30));
         PVector pos4 = new PVector(pos3.x, 0);
         Border border = new Border(pos, speed, pos1, pos2, pos3, pos4);
@@ -360,7 +357,7 @@ void populate_initial() {
     PVector speed = new PVector(-2, 0);
     PVector pos1 = new PVector(0, h);
     PVector pos2 = new PVector(0, 30);
-    for (int i = 0; i < 400; i++) {
+    for (int i = 0; i < 500; i++) {
         PVector pos3 = new PVector(20 + random(30), 50 - (20 + random(30)));
         PVector pos4 = new PVector(pos3.x, h);
         Border border = new Border(pos, speed, pos1, pos2, pos3, pos4);
